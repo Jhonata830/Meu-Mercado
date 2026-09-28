@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Ajustes{% endblock %}
+{% block content %}
+<header class="page-header"><div><div class="eyebrow">ORGANIZAÇÃO</div><h1>Ajustes</h1></div></header>
+
+
+<section class="card">
+  <h2>Catálogo por código de barras</h2>
+  <div class="catalog-status-list">
+    <div class="catalog-status-row">
+      <div>
+        <strong>Open Food Facts</strong>
+        <small>Primeira base externa consultada.</small>
+      </div>
+      <span class="status-badge ok">Ativo</span>
+    </div>
+    <div class="catalog-status-row">
+      <div>
+        <strong>Cosmos / Bluesoft</strong>
+        <small>Base adicional para ampliar o reconhecimento de produtos brasileiros.</small>
+      </div>
+      {% if cosmos_configurado %}
+        <span class="status-badge ok">Configurado</span>
+      {% else %}
+        <span class="status-badge warn">Não configurado</span>
+      {% endif %}
+    </div>
+  </div>
+  {% if cosmos_origem == 'ambiente' and cosmos_configurado %}
+    <p class="settings-help">O Cosmos está configurado pelo arquivo <code>.env</code> do container.</p>
+  {% else %}
+    <form method="post" action="{{ url_for('salvar_cosmos') }}" class="stack-form cosmos-form">
+      <label>Token da API Cosmos
+        <input type="password" name="cosmos_api_token" autocomplete="new-password" placeholder="{% if cosmos_configurado %}Token já salvo — deixe vazio para manter{% else %}Cole o token aqui{% endif %}">
+      </label>
+      <label>User-Agent Cosmos
+        <input name="cosmos_user_agent" value="{{ cosmos_user_agent or '' }}" placeholder="Cole o User-Agent informado pelo Cosmos">
+      </label>
+      <button class="btn primary" type="submit">Salvar integração Cosmos</button>
+    </form>
+    <p class="settings-help">O Token e o User-Agent ficam salvos somente no banco do seu Meu Mercado. Você obtém os dois na página da API do Bluesoft Cosmos.</p>
+    {% if cosmos_configurado %}
+    <form method="post" action="{{ url_for('remover_cosmos') }}" onsubmit="return confirm('Remover a integração com o Cosmos?')" class="remove-integration-form">
+      <button class="link-danger" type="submit">Remover integração Cosmos</button>
+    </form>
+    {% endif %}
+  {% endif %}
+</section>
+
+
+<section class="card">
+  <div class="backup-title-row">
+    <div>
+      <h2>Backup de produtos</h2>
+      <p class="backup-subtitle">Protege seu catálogo de produtos e códigos de barras.</p>
+    </div>
+    <span class="status-badge ok">{{ backup_info.total_produtos }} produto{% if backup_info.total_produtos != 1 %}s{% endif %}</span>
+  </div>
+
+  <div class="backup-status-box">
+    <div>
+      <strong>Backup automático</strong>
+      {% if backup_info.automatico_existe %}
+        <small>Última atualização: {{ backup_info.atualizado_em }}</small>
+      {% else %}
+        <small>Ainda não foi criado.</small>
+      {% endif %}
+    </div>
+    <span class="backup-check">✓</span>
+  </div>
+
+  <p class="settings-help">
+    O backup automático é atualizado quando o catálogo muda. Ele guarda
+    <strong>nome, código de barras, unidade e categoria</strong>.
+    Compras, histórico e credenciais do Cosmos não entram neste arquivo.
+  </p>
+
+  <a href="{{ url_for('baixar_backup_produtos') }}" class="btn primary backup-download-btn">
+    ↓ Baixar backup dos produtos
+  </a>
+
+  <details class="restore-backup">
+    <summary>Restaurar produtos de um backup</summary>
+    <form method="post"
+          action="{{ url_for('restaurar_backup_produtos') }}"
+          enctype="multipart/form-data"
+          class="stack-form restore-backup-form"
+          onsubmit="return confirm('Restaurar este catálogo? Os produtos do arquivo serão mesclados aos produtos atuais; suas compras e histórico não serão apagados.')">
+      <label>Arquivo de backup
+        <input type="file" name="arquivo_backup" accept=".json,application/json" required>
+      </label>
+      <button class="btn" type="submit">Restaurar e mesclar produtos</button>
+    </form>
+  </details>
+</section>
+
+<section class="card">
+  <h2>Categorias</h2>
+  <form method="post" action="{{ url_for('adicionar_categoria') }}" class="inline-form">
+    <input name="nome" placeholder="Nova categoria" required>
+    <button class="btn primary" type="submit">Adicionar</button>
+  </form>
+  <div class="chip-list">
+    {% for c in categorias %}
+    <div class="chip">{{ c.nome }}
+      <form method="post" action="{{ url_for('excluir_categoria', categoria_id=c.id) }}">
+        <button type="submit" title="Excluir">×</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Mercados</h2>
+  <form method="post" action="{{ url_for('adicionar_mercado') }}" class="inline-form">
+    <input name="nome" placeholder="Novo mercado" required>
+    <button class="btn primary" type="submit">Adicionar</button>
+  </form>
+  <div class="chip-list">
+    {% for m in mercados %}
+    <div class="chip">{{ m.nome }}
+      <form method="post" action="{{ url_for('excluir_mercado', mercado_id=m.id) }}">
+        <button type="submit" title="Excluir">×</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

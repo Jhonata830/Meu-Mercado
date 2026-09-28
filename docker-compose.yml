@@ -1,0 +1,19 @@
+services:
+  mercado:
+    build: .
+    container_name: mercado-app
+    restart: unless-stopped
+
+    ports:
+      - "5052:8000"
+
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DB_PATH: /app/data/mercado.db
+      BACKUP_DIR: /app/backups
+      COSMOS_API_TOKEN: ${COSMOS_API_TOKEN:-}
+      COSMOS_USER_AGENT: ${COSMOS_USER_AGENT:-}
+
+    volumes:
+      - ./data:/app/data
+      - "${BACKUP_HOST_PATH:-./backups}:/app/backups"

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Detalhes da compra{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div><div class="eyebrow">DETALHES</div><h1>{{ compra.mercado or "Compra" }}</h1></div>
+  <a class="back-link" href="{{ url_for('historico') }}">← Voltar</a>
+</header>
+<section class="budget-card">
+  <div class="budget-top">
+    <div><small>Total da compra</small><strong>{{ total|brl }}</strong><span>{{ compra.data[:16] }}</span></div>
+  </div>
+</section>
+<section class="section">
+  <div class="item-list">
+  {% for item in itens %}
+    <article class="item-card">
+      <div class="item-main">
+        <div>
+          <strong>{{ item.produto }}</strong>
+          <small>{{ item.categoria or "Sem categoria" }}</small>
+          <small>{{ item.quantidade|qtd }} {{ item.unidade }} × {{ item.valor_unitario|brl }}{{ price_suffix(item.unidade) }}</small>
+        </div>
+        <strong>{{ item.subtotal|brl }}</strong>
+      </div>
+    </article>
+  {% endfor %}
+  </div>
+</section>
+{% endblock %}

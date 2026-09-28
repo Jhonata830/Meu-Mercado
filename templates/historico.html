@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Histórico{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <div class="eyebrow">COMPRAS</div>
+    <h1>Histórico</h1>
+  </div>
+</header>
+
+{% if compras %}
+<section class="history-tools">
+  <div>
+    <strong>{{ compras|length }} compra{% if compras|length != 1 %}s{% endif %}</strong>
+    <small>A compra em andamento não será apagada.</small>
+  </div>
+
+  <form method="post"
+        action="{{ url_for('limpar_historico') }}"
+        onsubmit="return confirm('Apagar TODO o histórico de compras finalizadas? Esta ação não pode ser desfeita.')">
+    <button class="btn danger-outline compact" type="submit">🗑️ Limpar histórico</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="section">
+{% if compras %}
+  <div class="item-list">
+  {% for c in compras %}
+    <a class="history-card" href="{{ url_for('detalhe_compra', compra_id=c.id) }}">
+      <div>
+        <strong>{{ c.mercado or "Mercado não informado" }}</strong>
+        <small>{{ c.data[:16].replace('-', '/').replace(' ', ' · ') }} · {{ c.itens }} itens</small>
+      </div>
+      <strong>{{ c.total|brl }}</strong>
+    </a>
+  {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">As compras finalizadas aparecerão aqui.</div>
+{% endif %}
+</section>
+{% endblock %}

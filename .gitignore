@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Local configuration / secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data — NEVER publish your real database
+data/*
+!data/.gitkeep
+
+# Runtime backups — keep these out of GitHub
+backups/*
+!backups/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs / local files
+*.log
+.DS_Store
+Thumbs.db

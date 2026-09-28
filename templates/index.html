@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% block title %}Compra atual{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div>
+        <div class="eyebrow">MEU MERCADO</div>
+        <h1>Compra atual</h1>
+    </div>
+</header>
+
+{% if not compra %}
+<section class="hero-card">
+    <div class="hero-icon">🛒</div>
+    <h2>Começar uma compra</h2>
+    <p>Informe o mercado e, se quiser, um orçamento. Depois é só adicionar os produtos.</p>
+
+    <form method="post" action="{{ url_for('iniciar_compra') }}" class="stack-form">
+        <label>Mercado
+            <input name="mercado" list="mercados" placeholder="Ex.: Atacadão">
+        </label>
+        <datalist id="mercados">
+            {% for m in mercados %}<option value="{{ m.nome }}">{% endfor %}
+        </datalist>
+        <label>Orçamento
+            <div class="money-field"><span>R$</span><input name="orcamento" inputmode="decimal" placeholder="0,00"></div>
+        </label>
+        <button class="btn primary big" type="submit">Iniciar compra</button>
+    </form>
+</section>
+{% else %}
+<section class="budget-card">
+    <div class="budget-top">
+        <div>
+            <small>{{ compra.mercado or "Mercado não informado" }}</small>
+            <strong>{{ total|brl }}</strong>
+            <span>Total no carrinho</span>
+        </div>
+        {% if compra.orcamento > 0 %}
+        <div class="remaining {% if total > compra.orcamento %}danger{% endif %}">
+            <small>{% if total <= compra.orcamento %}Restante{% else %}Acima do orçamento{% endif %}</small>
+            <strong>{{ (compra.orcamento - total)|abs|brl }}</strong>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if compra.orcamento > 0 %}
+      {% set pct = (total / compra.orcamento * 100) %}
+      <div class="progress"><div style="width: {{ [pct, 100]|min }}%"></div></div>
+      <div class="budget-caption">Orçamento: {{ compra.orcamento|brl }} · {{ pct|round(0)|int }}% usado</div>
+    {% else %}
+      <div class="budget-caption no-budget">Sem orçamento definido</div>
+    {% endif %}
+
+    <details class="purchase-settings">
+        <summary>⚙️ Alterar mercado ou orçamento</summary>
+        <form method="post" action="{{ url_for('editar_compra', compra_id=compra.id) }}" class="stack-form purchase-edit-form">
+            <label>Mercado
+                <input name="mercado" list="mercados" value="{{ compra.mercado or '' }}" placeholder="Ex.: Atacadão">
+            </label>
+            <label>Orçamento
+                <div class="money-field">
+                    <span>R$</span>
+                    <input name="orcamento" inputmode="decimal"
+                           value="{% if compra.orcamento > 0 %}{{ '%.2f'|format(compra.orcamento) }}{% endif %}"
+                           placeholder="0,00">
+                </div>
+            </label>
+            <button class="btn primary" type="submit">Salvar alterações</button>
+        </form>
+    </details>
+
+    <form method="post"
+          action="{{ url_for('cancelar_compra', compra_id=compra.id) }}"
+          onsubmit="return confirm('{% if itens %}Cancelar esta compra e apagar todos os itens adicionados?{% else %}Cancelar esta compra?{% endif %}')"
+          class="cancel-purchase-form">
+        <button class="btn danger-outline" type="submit">Cancelar compra</button>
+    </form>
+</section>
+
+<section class="card">
+    <div class="add-product-head">
+      <h2>Adicionar produto</h2>
+      <button class="scan-btn" type="button" id="open-scanner">▣ Ler código de barras</button>
+    </div>
+
+    <form method="post" action="{{ url_for('adicionar_item', compra_id=compra.id) }}" class="stack-form" id="item-form">
+        <input type="hidden" name="codigo_barras" id="codigo_barras">
+
+        <div id="code-info" class="code-info hidden">
+          <span>▣ <strong id="code-value"></strong></span>
+          <button type="button" id="clear-code">×</button>
+        </div>
+
+        <label>Produto
+            <input id="produto" name="produto" autocomplete="off" placeholder="Comece a digitar..." required>
+            <div id="suggestions" class="suggestions"></div>
+        </label>
+
+        <div id="price-info" class="price-info hidden"></div>
+
+        <div class="measure-grid">
+            <label>Quantidade
+                <input name="quantidade" id="quantidade" value="1" inputmode="decimal" step="0.001" required>
+            </label>
+            <label>Unidade
+                <select name="unidade" id="unidade">
+                  {% for value, label in unidades %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+            </label>
+        </div>
+
+        <label><span id="price-title">Preço unitário</span>
+            <div class="money-field"><span>R$</span><input name="valor" id="valor" inputmode="decimal" placeholder="0,00" required></div>
+            <small id="price-help" class="field-help">Para unidades, informe o preço de 1 item.</small>
+        </label>
+
+        <label>Categoria
+            <select name="categoria_id" id="categoria_id">
+                <option value="">Sem categoria</option>
+                {% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+            </select>
+        </label>
+
+        <div class="subtotal-preview" id="subtotal-preview">
+          <span>Subtotal deste item</span><strong>R$ 0,00</strong>
+        </div>
+
+        <button class="btn primary big" type="submit">＋ Adicionar ao carrinho</button>
+    </form>
+</section>
+
+<section class="section">
+    <div class="section-title">
+        <h2>Itens</h2>
+        <span class="pill">{{ itens|length }}</span>
+    </div>
+
+    {% if itens %}
+      <div class="item-list">
+      {% for item in itens %}
+        <article class="item-card">
+            <div class="item-main">
+                <div>
+                    <strong>{{ item.produto }}</strong>
+                    <small>{{ item.categoria or "Sem categoria" }}</small>
+                    <small>{{ item.quantidade|qtd }} {{ item.unidade }} × {{ item.valor_unitario|brl }}{{ price_suffix(item.unidade) }}</small>
+                </div>
+                <strong class="subtotal">{{ item.subtotal|brl }}</strong>
+            </div>
+            <div class="item-actions">
+                <details>
+                    <summary>Editar</summary>
+                    <form method="post" action="{{ url_for('editar_item', item_id=item.id) }}" class="edit-row edit-row-units">
+                        <input name="quantidade" value="{{ item.quantidade|qtd }}" inputmode="decimal" step="0.001" aria-label="Quantidade">
+                        <select name="unidade" aria-label="Unidade">
+                          {% for value, label in unidades %}<option value="{{ value }}" {% if item.unidade == value %}selected{% endif %}>{{ value }}</option>{% endfor %}
+                        </select>
+                        <input name="valor" value="{{ '%.2f'|format(item.valor_unitario) }}" inputmode="decimal" aria-label="Preço">
+                        <button class="btn small" type="submit">Salvar</button>
+                    </form>
+                </details>
+                <form method="post" action="{{ url_for('excluir_item', item_id=item.id) }}" onsubmit="return confirm('Remover este item?')">
+                    <button class="link-danger" type="submit">Excluir</button>
+                </form>
+            </div>
+        </article>
+      {% endfor %}
+      </div>
+
+      <div class="sticky-total">
+        <div><small>Total</small><strong>{{ total|brl }}</strong></div>
+        <form method="post" action="{{ url_for('finalizar_compra', compra_id=compra.id) }}" onsubmit="return confirm('Finalizar esta compra?')">
+            <button class="btn success" type="submit">Finalizar compra</button>
+        </form>
+      </div>
+    {% else %}
+      <div class="empty">Nenhum produto adicionado ainda.</div>
+    {% endif %}
+</section>
+
+<div class="scanner-modal hidden" id="scanner-modal" aria-hidden="true">
+  <div class="scanner-sheet">
+    <div class="scanner-head">
+      <div>
+        <div class="eyebrow">CÂMERA</div>
+        <h2>Ler código de barras</h2>
+      </div>
+      <button type="button" class="scanner-close" id="close-scanner" aria-label="Fechar">×</button>
+    </div>
+    <p class="scanner-hint">Aponte a câmera para o código de barras do produto.</p>
+    <div class="reader" id="reader">
+      <video id="barcode-video" playsinline muted></video>
+      <div class="barcode-guide" aria-hidden="true">
+        <span></span>
+      </div>
+    </div>
+    <div id="scanner-status" class="scanner-status">Preparando câmera…</div>
+    <div class="manual-code">
+      <label>Ou digite o código
+        <input id="manual-code-input" inputmode="text" placeholder="EAN, UPC ou Code 128">
+      </label>
+      <button class="btn" type="button" id="use-manual-code">Usar código</button>
+    </div>
+    <p class="scanner-secure-note">A câmera precisa de acesso HTTPS. Pelo Tailscale, use o endereço HTTPS configurado com Tailscale Serve.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if compra %}
+<script src="https://unpkg.com/@zxing/browser@0.2.1"></script>
+<script>
+const productInput = document.getElementById('produto');
+const suggestionsBox = document.getElementById('suggestions');
+const priceInfo = document.getElementById('price-info');
+const category = document.getElementById('categoria_id');
+const unit = document.getElementById('unidade');
+const qty = document.getElementById('quantidade');
+const valueInput = document.getElementById('valor');
+const priceTitle = document.getElementById('price-title');
+const priceHelp = document.getElementById('price-help');
+const subtotalPreview = document.querySelector('#subtotal-preview strong');
+const barcodeInput = document.getElementById('codigo_barras');
+const codeInfo = document.getElementById('code-info');
+const codeValue = document.getElementById('code-value');
+
+function brl(v){
+  return Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function numberValue(v){
+  if(v === null || v === undefined) return 0;
+  let s = String(v).trim().replace(/\s/g,'');
+  if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+function effectiveQuantity(){
+  const q = numberValue(qty.value);
+  if(unit.value === 'g' || unit.value === 'ml') return q / 1000;
+  return q;
+}
+function updatePriceMode(){
+  const u = unit.value;
+  if(u === 'kg' || u === 'g'){
+    priceTitle.textContent = 'Preço por kg';
+    priceHelp.textContent = u === 'g' ? 'Ex.: 500 g com R$ 20,00/kg resulta em R$ 10,00.' : 'Informe o valor cobrado por 1 kg.';
+  } else if(u === 'L' || u === 'ml'){
+    priceTitle.textContent = 'Preço por litro';
+    priceHelp.textContent = u === 'ml' ? 'Ex.: 500 ml com R$ 8,00/L resulta em R$ 4,00.' : 'Informe o valor cobrado por 1 litro.';
+  } else {
+    priceTitle.textContent = 'Preço por ' + u;
+    priceHelp.textContent = 'Informe o preço de 1 ' + u + '.';
+  }
+  updateSubtotal();
+}
+function updateSubtotal(){
+  const raw = effectiveQuantity() * numberValue(valueInput.value);
+  const rounded = Math.round((raw + Number.EPSILON) * 100) / 100;
+  subtotalPreview.textContent = brl(rounded);
+}
+function setCode(code){
+  barcodeInput.value = code || '';
+  if(code){
+    codeValue.textContent = code;
+    codeInfo.classList.remove('hidden');
+  }else{
+    codeInfo.classList.add('hidden');
+    codeValue.textContent = '';
+  }
+}
+function showProductInfo(p){
+  if(p.categoria_id) category.value = p.categoria_id;
+  if(p.unidade) unit.value = p.unidade;
+  updatePriceMode();
+  let parts = [];
+  if(p.ultimo_preco !== null && p.ultimo_preco !== undefined) parts.push('Último preço: <strong>'+brl(p.ultimo_preco)+'</strong>');
+  if(p.menor_preco !== null && p.menor_preco !== undefined) parts.push('Menor: <strong>'+brl(p.menor_preco)+'</strong>');
+  if(p.fonte === 'openfoodfacts') parts.push('Identificado pelo Open Food Facts');
+  if(p.fonte === 'cosmos') parts.push('Identificado pelo Cosmos/Bluesoft');
+  if(parts.length){
+    priceInfo.innerHTML = parts.join(' · ');
+    priceInfo.classList.remove('hidden');
+  }else{
+    priceInfo.classList.add('hidden');
+  }
+}
+
+let timer;
+productInput.addEventListener('input', () => {
+  clearTimeout(timer);
+  const q = productInput.value.trim();
+  if(q.length < 2){ suggestionsBox.innerHTML=''; suggestionsBox.classList.remove('show'); return; }
+  timer = setTimeout(async () => {
+    try{
+      const r = await fetch('/api/produtos?q=' + encodeURIComponent(q));
+      const data = await r.json();
+      suggestionsBox.innerHTML = '';
+      data.forEach(p => {
+        const b = document.createElement('button');
+        b.type='button';
+        b.className='suggestion';
+        b.textContent = p.nome;
+        b.onclick = () => {
+          productInput.value = p.nome;
+          suggestionsBox.classList.remove('show');
+          setCode(p.codigo_barras || '');
+          showProductInfo(p);
+          valueInput.focus();
+        };
+        suggestionsBox.appendChild(b);
+      });
+      suggestionsBox.classList.toggle('show', data.length > 0);
+    }catch(e){ suggestionsBox.classList.remove('show'); }
+  }, 180);
+});
+document.addEventListener('click', e => {
+  if(!suggestionsBox.contains(e.target) && e.target !== productInput) suggestionsBox.classList.remove('show');
+});
+unit.addEventListener('change', updatePriceMode);
+qty.addEventListener('input', updateSubtotal);
+valueInput.addEventListener('input', updateSubtotal);
+document.getElementById('clear-code').addEventListener('click', () => setCode(''));
+updatePriceMode();
+
+// Scanner somente de código de barras - ZXing Browser (1D).
+const modal = document.getElementById('scanner-modal');
+const scannerStatus = document.getElementById('scanner-status');
+const barcodeVideo = document.getElementById('barcode-video');
+let codeReader = null;
+let scannerControls = null;
+let scannerRunning = false;
+let handlingCode = false;
+
+async function stopScanner(){
+  if(scannerControls){
+    try{ scannerControls.stop(); }catch(e){}
+    scannerControls = null;
+  }
+  scannerRunning = false;
+  if(barcodeVideo && barcodeVideo.srcObject){
+    try{ barcodeVideo.srcObject.getTracks().forEach(track => track.stop()); }catch(e){}
+    barcodeVideo.srcObject = null;
+  }
+}
+async function closeScanner(){
+  await stopScanner();
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden','true');
+  handlingCode = false;
+}
+async function handleCode(code){
+  if(handlingCode) return;
+  code = String(code || '').trim();
+  if(!code) return;
+  handlingCode = true;
+  scannerStatus.textContent = 'Código lido: ' + code;
+  setCode(code);
+  await stopScanner();
+  try{
+    const r = await fetch('/api/produto/codigo/' + encodeURIComponent(code));
+    const data = await r.json();
+    if(data.encontrado && data.produto){
+      productInput.value = data.produto.nome || productInput.value;
+      showProductInfo(data.produto);
+      scannerStatus.textContent = data.produto.fonte === 'local' ? 'Produto encontrado no seu catálogo.' : 'Produto identificado. Confira o nome antes de adicionar.';
+    }else{
+      productInput.value = '';
+      const consultas = data.consultas || {};
+      let detalhe = 'Código salvo. Digite o nome do produto uma vez; nas próximas compras ele será reconhecido automaticamente.';
+      if(consultas.cosmos === 'nao_configurado'){
+        detalhe += ' O Cosmos ainda não está configurado em Ajustes.';
+      }else if(consultas.cosmos === 'limite'){
+        detalhe += ' O limite diário do Cosmos foi atingido.';
+      }else if(consultas.cosmos === 'autenticacao'){
+        detalhe += ' O Cosmos recusou o token/User-Agent configurado.';
+      }else if(consultas.openfoodfacts === 'indisponivel' && consultas.cosmos === 'indisponivel'){
+        detalhe += ' As duas bases externas estão indisponíveis no momento.';
+      }
+      priceInfo.innerHTML = detalhe;
+      priceInfo.classList.remove('hidden');
+      scannerStatus.textContent = 'Código lido, mas o produto não foi encontrado nas bases disponíveis.';
+    }
+  }catch(e){
+    scannerStatus.textContent = 'Código lido, mas não foi possível consultar o catálogo agora.';
+  }
+  setTimeout(closeScanner, 800);
+  setTimeout(() => productInput.focus(), 900);
+}
+
+async function openScanner(){
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden','false');
+  scannerStatus.textContent = 'Preparando câmera…';
+  handlingCode = false;
+
+  if(!window.isSecureContext){
+    scannerStatus.innerHTML = '<strong>A câmera está bloqueada porque este endereço usa HTTP.</strong><br>Abra o app pelo endereço HTTPS do Tailscale Serve.';
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    scannerStatus.textContent = 'Este navegador não disponibilizou acesso à câmera.';
+    return;
+  }
+  if(typeof ZXingBrowser === 'undefined'){
+    scannerStatus.textContent = 'O leitor de código de barras não carregou. Atualize a página e tente novamente.';
+    return;
+  }
+
+  try{
+    // Leitor dedicado apenas a códigos 1D. QR Code não é processado.
+    codeReader = new ZXingBrowser.BrowserMultiFormatOneDReader(undefined, {
+      delayBetweenScanAttempts: 80,
+      delayBetweenScanSuccess: 1000,
+      tryPlayVideoTimeout: 8000
+    });
+
+    const constraints = {
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    };
+
+    scannerControls = await codeReader.decodeFromConstraints(
+      constraints,
+      barcodeVideo,
+      (result, error, controls) => {
+        if(result && !handlingCode){
+          const decoded = typeof result.getText === 'function' ? result.getText() : result.text;
+          if(decoded) handleCode(decoded);
+        }
+      }
+    );
+    scannerRunning = true;
+    scannerStatus.textContent = 'Enquadre todo o código de barras entre as linhas. Afaste um pouco o celular se estiver desfocado.';
+
+    // Tenta foco contínuo quando o navegador/câmera oferece suporte.
+    try{
+      const stream = barcodeVideo.srcObject;
+      const track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+      if(track && track.getCapabilities && track.applyConstraints){
+        const caps = track.getCapabilities();
+        if(caps.focusMode && caps.focusMode.includes('continuous')){
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+      }
+    }catch(e){}
+  }catch(e){
+    console.error('Erro ao abrir scanner:', e);
+    let msg = 'Não consegui abrir a câmera. Verifique a permissão da câmera no navegador.';
+    if(e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) msg = 'A câmera foi bloqueada. Autorize o acesso à câmera para este site nas configurações do navegador.';
+    if(e && (e.name === 'NotReadableError' || e.name === 'AbortError')) msg = 'A câmera está ocupada por outro aplicativo ou não pôde ser iniciada. Feche outros apps que estejam usando a câmera e tente novamente.';
+    scannerStatus.textContent = msg;
+  }
+}
+
+document.getElementById('open-scanner').addEventListener('click', openScanner);
+document.getElementById('close-scanner').addEventListener('click', closeScanner);
+modal.addEventListener('click', e => { if(e.target === modal) closeScanner(); });
+document.getElementById('use-manual-code').addEventListener('click', () => handleCode(document.getElementById('manual-code-input').value));
+document.getElementById('manual-code-input').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); handleCode(e.target.value); } });
+{% endif %}
+</script>
+{% endblock %}

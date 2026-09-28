@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Resumo{% endblock %}
+{% block content %}
+<header class="page-header"><div><div class="eyebrow">GASTOS</div><h1>Resumo mensal</h1></div></header>
+
+<section class="card">
+  <form method="get" class="month-form">
+    <label>Mês<input type="month" name="mes" value="{{ mes }}" onchange="this.form.submit()"></label>
+  </form>
+</section>
+
+<section class="budget-card">
+  <div class="budget-top"><div><small>Total no mês</small><strong>{{ total_mes|brl }}</strong></div></div>
+</section>
+
+<section class="section">
+  <div class="section-title"><h2>Por categoria</h2></div>
+  {% if por_categoria %}
+    <div class="item-list">
+      {% for r in por_categoria %}
+      <article class="item-card">
+        <div class="item-main"><strong>{{ r.categoria }}</strong><strong>{{ r.total|brl }}</strong></div>
+      </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">Nenhuma compra finalizada neste mês.</div>
+  {% endif %}
+</section>
+{% endblock %}

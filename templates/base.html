@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>{% block title %}Meu Mercado{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="app-shell">
+        {% with msgs = get_flashed_messages() %}
+          {% if msgs %}
+            {% for msg in msgs %}<div class="flash">{{ msg }}</div>{% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">
+            <span>🛒</span><small>Compra</small>
+        </a>
+        <a href="{{ url_for('historico') }}" class="{% if request.endpoint in ['historico','detalhe_compra'] %}active{% endif %}">
+            <span>🧾</span><small>Histórico</small>
+        </a>
+        <a href="{{ url_for('produtos') }}" class="{% if request.endpoint == 'produtos' %}active{% endif %}">
+            <span>📦</span><small>Produtos</small>
+        </a>
+        <a href="{{ url_for('resumo') }}" class="{% if request.endpoint == 'resumo' %}active{% endif %}">
+            <span>📊</span><small>Resumo</small>
+        </a>
+        <a href="{{ url_for('configuracoes') }}" class="{% if request.endpoint == 'configuracoes' %}active{% endif %}">
+            <span>⚙️</span><small>Ajustes</small>
+        </a>
+    </nav>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

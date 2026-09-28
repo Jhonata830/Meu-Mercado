@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <div class="eyebrow">CATÁLOGO</div>
+    <h1>Produtos</h1>
+  </div>
+</header>
+
+<section class="card">
+  <div class="add-product-head">
+    <div>
+      <h2>Novo produto</h2>
+      <p class="catalog-intro">Cadastre produtos no seu banco sem precisar iniciar uma compra.</p>
+    </div>
+    <button class="scan-btn" type="button" id="open-product-scanner">▣ Escanear</button>
+  </div>
+
+  <div id="catalog-scan-info" class="catalog-scan-info hidden"></div>
+
+  <form method="post" action="{{ url_for('adicionar_produto') }}" class="stack-form" id="catalog-product-form">
+    <label>Nome
+      <input id="catalog-product-name" name="nome" required placeholder="Ex.: Arroz Tio João 5kg" autocomplete="off">
+    </label>
+
+    <div class="measure-grid">
+      <label>Unidade padrão
+        <select name="unidade" id="catalog-product-unit">
+          {% for value, label in unidades %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+
+      <label>Categoria
+        <select name="categoria_id" id="catalog-product-category">
+          <option value="">Sem categoria</option>
+          {% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <label>Código de barras <span class="muted">(opcional)</span>
+      <div class="barcode-input-row">
+        <input id="catalog-product-barcode" name="codigo_barras" inputmode="text" placeholder="EAN, UPC ou Code 128">
+        <button type="button" class="btn barcode-inline-btn" id="lookup-barcode">Consultar</button>
+      </div>
+    </label>
+
+    <button class="btn primary" type="submit">Salvar produto no catálogo</button>
+  </form>
+</section>
+
+<section class="section">
+  <div class="section-title"><h2>Cadastrados</h2><span class="pill">{{ produtos|length }}</span></div>
+  {% if produtos %}
+  <div class="item-list">
+    {% for p in produtos %}
+    <article class="item-card">
+      <div class="item-main">
+        <div>
+          <strong>{{ p.nome }}</strong>
+          <small>{{ p.categoria or "Sem categoria" }} · {{ p.unidade or "un" }}</small>
+          {% if p.codigo_barras %}<small>▣ {{ p.codigo_barras }}</small>{% endif %}
+          {% if p.ultimo_preco is not none %}
+          <small>Último: {{ p.ultimo_preco|brl }}{{ price_suffix(p.unidade) }}{% if p.menor_preco is not none %} · Menor: {{ p.menor_preco|brl }}{{ price_suffix(p.unidade) }}{% endif %}</small>
+          {% endif %}
+        </div>
+        <form method="post" action="{{ url_for('excluir_produto', produto_id=p.id) }}">
+          <button class="link-danger" type="submit">Excluir</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="empty">Nenhum produto cadastrado.</div>
+  {% endif %}
+</section>
+
+<div class="scanner-modal hidden" id="catalog-scanner-modal" aria-hidden="true">
+  <div class="scanner-sheet">
+    <div class="scanner-head">
+      <div>
+        <div class="eyebrow">CATÁLOGO</div>
+        <h2>Escanear produto</h2>
+      </div>
+      <button type="button" class="scanner-close" id="close-product-scanner" aria-label="Fechar">×</button>
+    </div>
+
+    <p class="scanner-hint">
+      Leia o código de barras para consultar e cadastrar o produto, sem abrir nenhuma compra.
+    </p>
+
+    <div class="reader">
+      <video id="catalog-barcode-video" playsinline muted></video>
+      <div class="barcode-guide" aria-hidden="true"><span></span></div>
+    </div>
+
+    <div id="catalog-scanner-status" class="scanner-status">Preparando câmera…</div>
+
+    <div class="manual-code">
+      <label>Ou digite o código
+        <input id="catalog-manual-code" inputmode="text" placeholder="EAN, UPC ou Code 128">
+      </label>
+      <button class="btn" type="button" id="catalog-use-manual-code">Usar código</button>
+    </div>
+
+    <p class="scanner-secure-note">
+      O scanner utiliza a mesma consulta do carrinho: catálogo local → Open Food Facts → Cosmos/Bluesoft.
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/@zxing/browser@0.2.1"></script>
+<script>
+const catalogName = document.getElementById('catalog-product-name');
+const catalogUnit = document.getElementById('catalog-product-unit');
+const catalogCategory = document.getElementById('catalog-product-category');
+const catalogBarcode = document.getElementById('catalog-product-barcode');
+const catalogInfo = document.getElementById('catalog-scan-info');
+
+function showCatalogInfo(message, type='info'){
+  catalogInfo.textContent = message;
+  catalogInfo.classList.remove('hidden', 'ok', 'warn');
+  if(type === 'ok') catalogInfo.classList.add('ok');
+  if(type === 'warn') catalogInfo.classList.add('warn');
+}
+
+async function lookupCatalogCode(rawCode){
+  const code = String(rawCode || '').trim();
+  if(!code){
+    showCatalogInfo('Informe ou escaneie um código de barras.', 'warn');
+    return false;
+  }
+
+  catalogBarcode.value = code;
+  showCatalogInfo('Consultando código ' + code + '…');
+
+  try{
+    const r = await fetch('/api/produto/codigo/' + encodeURIComponent(code));
+    const data = await r.json();
+
+    if(data.encontrado && data.produto){
+      const p = data.produto;
+      catalogName.value = p.nome || '';
+      if(p.unidade) catalogUnit.value = p.unidade;
+      if(p.categoria_id) catalogCategory.value = p.categoria_id;
+
+      if(p.fonte === 'local'){
+        showCatalogInfo('Este produto já está no seu catálogo. Você pode ajustar os dados e salvar para atualizar.', 'ok');
+      }else if(p.fonte === 'cosmos'){
+        showCatalogInfo('Produto identificado pelo Cosmos/Bluesoft. Confira os dados e toque em “Salvar produto no catálogo”.', 'ok');
+      }else if(p.fonte === 'openfoodfacts'){
+        showCatalogInfo('Produto identificado pelo Open Food Facts. Confira os dados e toque em “Salvar produto no catálogo”.', 'ok');
+      }else{
+        showCatalogInfo('Produto identificado. Confira os dados e salve no catálogo.', 'ok');
+      }
+      return true;
+    }
+
+    const consultas = data.consultas || {};
+    let msg = 'Código lido, mas o produto ainda não foi encontrado. Digite o nome e salve: o código ficará registrado para as próximas leituras.';
+    if(consultas.cosmos === 'limite'){
+      msg += ' O limite diário do Cosmos foi atingido.';
+    }else if(consultas.cosmos === 'autenticacao'){
+      msg += ' Verifique o Token/User-Agent do Cosmos em Ajustes.';
+    }else if(consultas.cosmos === 'nao_configurado'){
+      msg += ' O Cosmos não está configurado.';
+    }else if(consultas.openfoodfacts === 'indisponivel' && consultas.cosmos === 'indisponivel'){
+      msg += ' As bases externas estão indisponíveis no momento.';
+    }
+    showCatalogInfo(msg, 'warn');
+    catalogName.value = '';
+    return false;
+  }catch(e){
+    console.error(e);
+    showCatalogInfo('O código foi capturado, mas não foi possível consultar o catálogo agora. Você ainda pode digitar o nome e salvar.', 'warn');
+    return false;
+  }
+}
+
+document.getElementById('lookup-barcode').addEventListener('click', () => lookupCatalogCode(catalogBarcode.value));
+catalogBarcode.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    lookupCatalogCode(catalogBarcode.value);
+  }
+});
+
+// Scanner independente do fluxo de compras.
+const catalogModal = document.getElementById('catalog-scanner-modal');
+const catalogScannerStatus = document.getElementById('catalog-scanner-status');
+const catalogVideo = document.getElementById('catalog-barcode-video');
+
+let catalogReader = null;
+let catalogControls = null;
+let catalogHandlingCode = false;
+
+async function stopCatalogScanner(){
+  if(catalogControls){
+    try{ catalogControls.stop(); }catch(e){}
+    catalogControls = null;
+  }
+  if(catalogVideo && catalogVideo.srcObject){
+    try{ catalogVideo.srcObject.getTracks().forEach(track => track.stop()); }catch(e){}
+    catalogVideo.srcObject = null;
+  }
+}
+
+async function closeCatalogScanner(){
+  await stopCatalogScanner();
+  catalogModal.classList.add('hidden');
+  catalogModal.setAttribute('aria-hidden','true');
+  catalogHandlingCode = false;
+}
+
+async function handleCatalogCode(code){
+  if(catalogHandlingCode) return;
+  code = String(code || '').trim();
+  if(!code) return;
+
+  catalogHandlingCode = true;
+  catalogScannerStatus.textContent = 'Código lido: ' + code;
+  catalogBarcode.value = code;
+  await stopCatalogScanner();
+
+  await lookupCatalogCode(code);
+
+  setTimeout(async () => {
+    await closeCatalogScanner();
+    if(catalogName.value) catalogUnit.focus();
+    else catalogName.focus();
+  }, 650);
+}
+
+async function openCatalogScanner(){
+  catalogModal.classList.remove('hidden');
+  catalogModal.setAttribute('aria-hidden','false');
+  catalogScannerStatus.textContent = 'Preparando câmera…';
+  catalogHandlingCode = false;
+
+  if(!window.isSecureContext){
+    catalogScannerStatus.innerHTML = '<strong>A câmera está bloqueada porque este endereço usa HTTP.</strong><br>Abra o app pelo HTTPS do Tailscale Serve.';
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    catalogScannerStatus.textContent = 'Este navegador não disponibilizou acesso à câmera.';
+    return;
+  }
+  if(typeof ZXingBrowser === 'undefined'){
+    catalogScannerStatus.textContent = 'O leitor não carregou. Atualize a página e tente novamente.';
+    return;
+  }
+
+  try{
+    catalogReader = new ZXingBrowser.BrowserMultiFormatOneDReader(undefined, {
+      delayBetweenScanAttempts: 80,
+      delayBetweenScanSuccess: 1000,
+      tryPlayVideoTimeout: 8000
+    });
+
+    const constraints = {
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    };
+
+    catalogControls = await catalogReader.decodeFromConstraints(
+      constraints,
+      catalogVideo,
+      (result) => {
+        if(result && !catalogHandlingCode){
+          const decoded = typeof result.getText === 'function' ? result.getText() : result.text;
+          if(decoded) handleCatalogCode(decoded);
+        }
+      }
+    );
+
+    catalogScannerStatus.textContent = 'Enquadre todo o código de barras entre as linhas.';
+
+    try{
+      const stream = catalogVideo.srcObject;
+      const track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+      if(track && track.getCapabilities && track.applyConstraints){
+        const caps = track.getCapabilities();
+        if(caps.focusMode && caps.focusMode.includes('continuous')){
+          await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
+        }
+      }
+    }catch(e){}
+  }catch(e){
+    console.error('Erro ao abrir scanner do catálogo:', e);
+    let msg = 'Não consegui abrir a câmera. Verifique a permissão da câmera no navegador.';
+    if(e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')){
+      msg = 'A câmera foi bloqueada. Autorize o acesso à câmera para este site.';
+    }else if(e && (e.name === 'NotReadableError' || e.name === 'AbortError')){
+      msg = 'A câmera está ocupada por outro aplicativo ou não pôde ser iniciada.';
+    }
+    catalogScannerStatus.textContent = msg;
+  }
+}
+
+document.getElementById('open-product-scanner').addEventListener('click', openCatalogScanner);
+document.getElementById('close-product-scanner').addEventListener('click', closeCatalogScanner);
+catalogModal.addEventListener('click', e => {
+  if(e.target === catalogModal) closeCatalogScanner();
+});
+document.getElementById('catalog-use-manual-code').addEventListener('click', () => {
+  handleCatalogCode(document.getElementById('catalog-manual-code').value);
+});
+document.getElementById('catalog-manual-code').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    handleCatalogCode(e.target.value);
+  }
+});
+</script>
+{% endblock %}
