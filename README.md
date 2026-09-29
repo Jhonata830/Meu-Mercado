@@ -2,6 +2,71 @@
 
 Aplicativo web de controle de compras de mercado, desenvolvido em Python/Flask e pensado para uso principalmente pelo celular.
 
+## 📱 Interface
+
+### 🛒 Tela de compra
+
+A tela de compra permite adicionar produtos, informar valores e acompanhar o total da compra em tempo real.
+
+<p align="center">
+  <img src="docs/images/01-tela-de-compra.png" width="300">
+</p>
+
+---
+
+### 🏁 Iniciando uma compra
+
+O fluxo de início de compras permite definir o mercado e o orçamento antes de começar a adicionar os produtos.
+
+<p align="center">
+  <img src="docs/images/01-tela-de-iniciar-compras1.png" width="300">
+  <img src="docs/images/01-tela-de-iniciar-compras2.png" width="300">
+  <img src="docs/images/01-tela-de-iniciar-compras3.png" width="300">
+</p>
+
+---
+
+### 📜 Histórico
+
+O histórico permite consultar compras realizadas anteriormente e acompanhar os registros das compras.
+
+<p align="center">
+  <img src="docs/images/02-tela-de-historico.png" width="300">
+</p>
+
+---
+
+### 📦 Produtos
+
+O catálogo de produtos permite cadastrar, consultar e organizar os produtos utilizados nas compras.
+
+<p align="center">
+  <img src="docs/images/03-tela-de-produtos1.png" width="300">
+  <img src="docs/images/03-tela-de-produtos2.png" width="300">
+</p>
+
+---
+
+### ⚙️ Ajustes
+
+A área de ajustes concentra as configurações e opções de gerenciamento do aplicativo.
+
+<p align="center">
+  <img src="docs/images/04-tela-de-ajustes1.png" width="300">
+  <img src="docs/images/04-tela-de-ajustes2.png" width="300">
+  <img src="docs/images/04-tela-de-ajustes3.png" width="300">
+</p>
+
+---
+
+### 📊 Resumo
+
+A tela de resumo apresenta informações consolidadas sobre as compras e os gastos.
+
+<p align="center">
+  <img src="docs/images/04-tela-de-resumo.png" width="300">
+</p>
+
 ## ✨ Recursos
 
 - Cadastro de mercados e orçamento
