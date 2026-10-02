@@ -1,6 +1,52 @@
 # 🛒 Meu Mercado
 
-Aplicativo web de controle de compras de mercado, desenvolvido em Python/Flask e pensado para uso principalmente pelo celular.
+Aplicativo web para controle de compras de mercado, desenvolvido em **Python, Flask e SQLite**, com interface responsiva para computadores e dispositivos móveis.
+
+O projeto permite criar compras, acompanhar o orçamento, gerenciar produtos, consultar histórico, utilizar códigos de barras e manter backups do catálogo de produtos.
+
+[![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-Web%20Framework-black?logo=flask)](https://flask.palletsprojects.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-Database-blue?logo=sqlite)](https://www.sqlite.org/)
+[![Docker](https://img.shields.io/badge/Docker-Container-blue?logo=docker)](https://www.docker.com/)
+
+---
+
+## ✨ Recursos
+
+- 🛒 Criação e gerenciamento de compras
+- 💰 Controle de orçamento
+- 🧮 Cálculo automático do total da compra
+- 📦 Catálogo de produtos
+- 🏷️ Categorias e unidades de medida
+- ⚖️ Suporte a produtos vendidos por peso ou unidade
+- 📷 Leitura de códigos de barras pela câmera
+- 🔎 Busca de produtos por código de barras
+- 🌐 Integração com Open Food Facts
+- 🔗 Integração opcional com Bluesoft Cosmos
+- 📜 Histórico de compras
+- 📊 Resumo das compras
+- 💾 Backup automático do catálogo de produtos
+- ♻️ Restauração de produtos a partir de backup
+- 📱 Interface responsiva
+- 🐳 Execução através de Docker
+- 🏠 Compatível com ambientes self-hosted, incluindo ZimaOS
+
+---
+
+## 🛠️ Tecnologias
+
+- **Python**
+- **Flask**
+- **SQLite**
+- **HTML5**
+- **CSS3**
+- **JavaScript**
+- **Docker / Docker Compose**
+- **ZXing Browser**
+- **Open Food Facts**
+- **Bluesoft Cosmos** (opcional)
+
+---
 
 ## 📱 Interface
 
@@ -67,157 +113,23 @@ A tela de resumo apresenta informações consolidadas sobre as compras e os gast
   <img src="docs/images/04-tela-de-resumo.png" width="300">
 </p>
 
-## ✨ Recursos
+---
 
-- Cadastro de mercados e orçamento
-- Lista de produtos e categorias
-- Soma automática dos itens
-- Produtos por unidade e por peso
-- Histórico de compras
-- Resumos de gastos
-- Leitura de códigos de barras pela câmera
-- Cadastro de produtos por código de barras sem iniciar uma compra
-- Busca automática de produtos por:
-  1. catálogo local
-  2. Open Food Facts
-  3. Bluesoft Cosmos
-- Catálogo local para evitar consultas externas repetidas
-- Backup automático do catálogo de produtos
-- Backup manual e restauração do catálogo
-- Interface responsiva para celular
-- Execução em Docker
+## 🚀 Instalação
 
-## 🧰 Tecnologias
+O Meu Mercado pode ser executado localmente ou em um servidor utilizando Docker.
 
-- Python
-- Flask
-- SQLite
-- HTML / CSS / JavaScript
-- ZXing Browser para leitura de códigos de barras
-- Open Food Facts
-- Bluesoft Cosmos (opcional)
-- Docker / Docker Compose
+### 📋 Pré-requisitos
 
-## 📁 Estrutura
+Para executar o projeto com Docker, é necessário ter instalado:
 
-```text
-.
-├── app.py
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-├── templates/
-├── static/
-├── data/
-│   └── .gitkeep
-└── backups/
-    └── .gitkeep
-```
+- Docker
+- Docker Compose
 
-Os diretórios `data/` e `backups/` são dados de execução e ficam fora do Git.
+---
 
-## 🚀 Rodando com Docker
-
-1. Copie `.env.example` para `.env`.
-2. Defina uma `SECRET_KEY`.
-3. Se quiser o Cosmos, informe `COSMOS_API_TOKEN` e `COSMOS_USER_AGENT`.
-4. Inicie:
+### 📥 1. Clone o repositório
 
 ```bash
-docker compose up -d --build
-```
-
-O aplicativo ficará disponível em:
-
-```text
-http://localhost:5052
-```
-
-### ZimaOS
-
-No seu ZimaOS, você pode manter o banco em `data/` e mandar os backups para um HDD usando:
-
-```env
-BACKUP_HOST_PATH=/path/to/your/backup
-```
-
-Depois:
-
-```bash
-docker compose up -d --build
-```
-
-O Compose monta:
-
-```text
-${BACKUP_HOST_PATH} -> /app/backups
-```
-
-Assim, a localização física do backup fica configurável e não precisa ficar presa ao código do projeto.
-
-## 🔐 Cosmos / Bluesoft
-
-A integração é opcional.
-
-Você pode configurar pelo arquivo `.env`:
-
-```env
-COSMOS_API_TOKEN=seu_token
-COSMOS_USER_AGENT=Cosmos-API-Request
-```
-
-ou pela tela de configurações do próprio aplicativo.
-
-**Nunca publique seu token, seu `.env` ou seu banco SQLite.**
-
-## 📱 Código de barras
-
-O scanner funciona em contexto HTTPS nos navegadores que exigem um contexto seguro para acesso à câmera.
-
-Em uma instalação usando Tailscale, uma opção é usar o Tailscale Serve apontando para a porta `5052`.
-
-Exemplo quando o Tailscale está em um container chamado `tailscale`:
-
-```bash
-docker exec -it tailscale tailscale serve --bg 5052
-docker exec -it tailscale tailscale serve status
-```
-
-Depois use o endereço HTTPS exibido pelo Tailscale.
-
-## 💾 Backup
-
-O catálogo de produtos pode ser exportado pela tela de configurações.
-
-O backup contém informações do catálogo, como:
-
-- nome
-- código de barras
-- unidade
-- categoria
-
-Não deve conter compras, histórico ou credenciais do Cosmos.
-
-Para proteger os dados contra falha do servidor, recomenda-se manter uma cópia do backup fora do próprio ZimaOS.
-
-## ⚠️ Importante antes de publicar
-
-Não envie para o GitHub:
-
-- `.env`
-- `data/mercado.db`
-- arquivos `.db` / `.sqlite`
-- backups pessoais
-- tokens ou API keys
-- configurações específicas da sua rede/Tailscale
-
-Este projeto usa `.gitignore` para evitar esses arquivos.
-
-## 📄 Licença
-
-Escolha uma licença antes de publicar. Se você quer permitir que outras pessoas usem e modifiquem o projeto, MIT é uma opção simples. Se ainda não tiver certeza, deixe a licença para decidir depois.
-
-## 🤝 Contribuições
-
-Sugestões, correções e melhorias são bem-vindas por meio de Issues e Pull Requests.
+git clone https://github.com/Jhonata830/Meu-Mercado.git
+cd Meu-Mercado
