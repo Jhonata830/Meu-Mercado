@@ -98,9 +98,9 @@ O catálogo de produtos permite cadastrar, consultar e organizar os produtos uti
 A área de ajustes concentra as configurações e opções de gerenciamento do aplicativo.
 
 <p align="center">
-  <img src="docs/images/04-tela-de-ajustes1.png" width="300">
-  <img src="docs/images/04-tela-de-ajustes2.png" width="300">
-  <img src="docs/images/04-tela-de-ajustes3.png" width="300">
+  <img src="docs/images/05-tela-de-ajustes1.png" width="300">
+  <img src="docs/images/05-tela-de-ajustes2.png" width="300">
+  <img src="docs/images/05-tela-de-ajustes3.png" width="300">
 </p>
 
 ---
